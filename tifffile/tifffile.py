@@ -5282,6 +5282,51 @@ class TiffPage:
                 ):
                     yield from executor.map(decode, segments)
 
+    def gettile(self, indices, tile_size, squeeze=True):
+        """Read image data from tile and return as numpy array.
+        
+        Parameters
+        ----------
+        indices: tuple
+            The (row, column) indices of the tile within the image
+        tile_size: int
+            The width of a single tile in pixels
+        squeeze : bool
+            If True (default), all length-1 dimensions (except X and Y) are
+            squeezed out from the array.
+            If False, the shape of the returned array might be different from
+            the page.shape.
+
+        Returns
+        -------
+        numpy.ndarray
+            Numpy array of decompressed, depredicted, and unpacked image data
+            read from Strip/Tile Offsets/ByteCounts, formatted according to
+            shape and dtype metadata found in tags and parameters.
+            Photometric conversion, pre-multiplied alpha, orientation, and
+            colorimetry corrections are not applied. Specifically, CMYK images
+            are not converted to RGB, MinIsWhite images are not inverted,
+            and color palettes are not applied. An exception are YCbCr JPEG
+            compressed images, which are converted to RGB.
+        """
+
+        width = self.shape[1]
+        row_n = math.ceil(width / tile_size)
+        (row_idx, col_idx) = indices
+        idx = row_n * col_idx + row_idx
+
+        offset = self._offsetscounts[0][idx]
+        count = self._offsetscounts[1][idx]
+
+        fh = self.parent.filehandle
+        data, segmentindex = next(fh.read_segments([offset], [count]))
+        tile, index, shape = self.decode(data, segmentindex)
+
+        if squeeze:
+            tile = numpy.squeeze(tile)
+
+        return tile
+
     def asarray(self, out=None, squeeze=True, lock=None, reopen=True,
                 maxworkers=None):
         """Read image data from file and return as numpy array.
