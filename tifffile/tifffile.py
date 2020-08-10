@@ -5311,7 +5311,7 @@ class TiffPage:
         width = self.shape[1]
         row_n = math.ceil(width / self.tilewidth)
         (row_idx, col_idx) = indices
-        idx = row_n * col_idx + row_idx
+        idx = row_n * row_idx + col_idx
 
         offset = self._offsetscounts[0][idx]
         count = self._offsetscounts[1][idx]
